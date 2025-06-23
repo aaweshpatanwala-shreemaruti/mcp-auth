@@ -5,44 +5,21 @@ import { z } from "zod";
 // Define our MCP agent with tools
 export class MyMCP extends McpAgent {
 	server = new McpServer({
-		name: "Authenticated Calculator",
+		name: "Authless Calculator",
 		version: "1.0.0",
 	});
 
-	// Validate auth token
-	private validateToken(token: string): boolean {
-		// Replace this with your actual token validation logic
-		return token === process.env.AUTH_TOKEN;
-	}
-
 	async init() {
-		// Simple addition tool with auth
+		// Simple addition tool
 		this.server.tool(
 			"add",
 			{ a: z.number(), b: z.number() },
-			async ({ a, b }, extra) => {
-				// Get auth token from environment since MCP doesn't expose headers directly
-				const authToken = process.env.AUTH_TOKEN;
-				
-				if (!authToken || !this.validateToken(authToken)) {
-					return {
-						content: [{
-							type: "text" as const,
-							text: "Unauthorized: Invalid or missing token"
-						}]
-					};
-				}
-				
-				return {
-					content: [{
-						type: "text" as const,
-						text: String(a + b)
-					}]
-				};
-			}
+			async ({ a, b }) => ({
+				content: [{ type: "text", text: String(a + b) }],
+			})
 		);
 
-		// Calculator tool with multiple operations and auth
+		// Calculator tool with multiple operations
 		this.server.tool(
 			"calculate",
 			{
@@ -50,19 +27,7 @@ export class MyMCP extends McpAgent {
 				a: z.number(),
 				b: z.number(),
 			},
-			async ({ operation, a, b }, extra) => {
-				// Get auth token from environment since MCP doesn't expose headers directly
-				const authToken = process.env.AUTH_TOKEN;
-				
-				if (!authToken || !this.validateToken(authToken)) {
-					return {
-						content: [{
-							type: "text" as const,
-							text: "Unauthorized: Invalid or missing token"
-						}]
-					};
-				}
-
+			async ({ operation, a, b }) => {
 				let result: number;
 				switch (operation) {
 					case "add":
@@ -75,31 +40,22 @@ export class MyMCP extends McpAgent {
 						result = a * b;
 						break;
 					case "divide":
-						if (b === 0) {
+						if (b === 0)
 							return {
-								content: [{
-									type: "text" as const,
-									text: "Error: Cannot divide by zero"
-								}]
+								content: [
+									{
+										type: "text",
+										text: "Error: Cannot divide by zero",
+									},
+								],
 							};
-						}
 						result = a / b;
 						break;
 				}
-				
-				return {
-					content: [{
-						type: "text" as const,
-						text: String(result)
-					}]
-				};
+				return { content: [{ type: "text", text: String(result) }] };
 			}
 		);
 	}
-}
-
-interface Env {
-	AUTH_TOKEN: string;
 }
 
 export default {
@@ -117,4 +73,3 @@ export default {
 		return new Response("Not found", { status: 404 });
 	},
 };
-
